@@ -1,0 +1,8 @@
+EXPORTS
+    DllMain
+    DebugExtensionNotify
+    DebugExtensionInitialize
+    dump_pte
+    dpte
+    DebugExtensionUninitialize
+    test

@@ -1,7 +1,7 @@
 /* A debugger extension to dump information about PTE and PFN structures in my memory manager
  * Made by Landon Moceri on 2-26-2024 */
 
-// cl /LD /Fo./build/ /Fe./build/ /Fd./build/ extension.c /link /def:extension.def /out:build/extension.dll
+// cl /LD /Fo./build/ /Fe./build/ /Fd./build/ extension.c /link /def:plusextension.def /out:build/extension.dll
 // C:/Users/ltm14/CLionProjects/dbg-ext/build/extension.dll
 
 #include <Windows.h>
@@ -72,22 +72,47 @@ HRESULT CALLBACK dpte(IDebugClient* Client, PCSTR args)
     // Initialize interfaces
     IDebugControl* Control;
     IDebugDataSpaces* DataSpaces;
-    // 00007ff6`f38e0000
+
     if (Client->lpVtbl->QueryInterface(Client, &IID_IDebugControl, (void**)&Control) != S_OK)
     {
+        return E_FAIL;
+    }
+    HRESULT hr = Client->lpVtbl->QueryInterface(Client, &IID_IDebugDataSpaces, (void**)&DataSpaces);
+    if (hr != S_OK)
+    {
+        Control->lpVtbl->Output(Control, DEBUG_OUTPUT_NORMAL, "Failed to get DataSpaces, error: 0x%x\n", hr);
+        Control->lpVtbl->Release(Control);
         return E_FAIL;
     }
 
     // Parse the PTE address from the arguments
     ULONG64 pte_address;
-    sscanf(args, "%llx", &pte_address);
+    Control->lpVtbl->Output(Control, DEBUG_OUTPUT_NORMAL, "args: %s\n", args);
+    sscanf(args, "%I64x", &pte_address);
     // Print the PTE address from the arguments
-    Control->lpVtbl->Output(Control, DEBUG_OUTPUT_NORMAL, "PTE address: %llx\n", pte_address);
+    Control->lpVtbl->Output(Control, DEBUG_OUTPUT_NORMAL, "PTE address: %I64x\n", pte_address);
+
+    // Read the PTE from memory
+    PTE pte;
+    hr = DataSpaces->lpVtbl->ReadVirtualUncached(DataSpaces, pte_address, &pte, sizeof(PTE), NULL);
+    if (hr != S_OK)
+    {
+        Control->lpVtbl->Output(Control, DEBUG_OUTPUT_NORMAL, "ReadVirtualUncached failed with error: 0x%x\n", hr);
+        Control->lpVtbl->Release(Control);
+        DataSpaces->lpVtbl->Release(DataSpaces);
+        return hr;
+    }
+
+    // Print the PTE contents
+    Control->lpVtbl->Output(Control, DEBUG_OUTPUT_NORMAL, "PTE at %I64x:\n", pte_address);
+    Control->lpVtbl->Output(Control, DEBUG_OUTPUT_NORMAL, "Valid: %llu\n", pte.memory_format.valid);
+    Control->lpVtbl->Output(Control, DEBUG_OUTPUT_NORMAL, "Frame number: %llu\n", pte.memory_format.frame_number);
+    Control->lpVtbl->Output(Control, DEBUG_OUTPUT_NORMAL, "Age: %llu\n", pte.memory_format.age);
 
     return S_OK;
 }
 
-
+/*
 // Command to dump a specific PTE
 HRESULT CALLBACK dump_pte(IDebugClient* Client, PCSTR args)
 {
@@ -154,6 +179,7 @@ HRESULT CALLBACK dump_pte(IDebugClient* Client, PCSTR args)
 
     return S_OK;
 }
+ */
 
 HRESULT CALLBACK DebugExtensionUninitialize(void)
 {

@@ -2,7 +2,8 @@ EXPORTS
     DllMain
     DebugExtensionNotify
     DebugExtensionInitialize
-    dump_pte
-    dpte
     DebugExtensionUninitialize
+    pte
+    va
+    vars_load
     test

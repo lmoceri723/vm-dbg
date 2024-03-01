@@ -5,5 +5,5 @@ EXPORTS
     DebugExtensionUninitialize
     pte
     va
-    vars_load
+    vars
     test
